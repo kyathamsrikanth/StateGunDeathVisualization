@@ -56,7 +56,7 @@ export default function WhiteHatStats(props) {
             .attr('height', (d) => height - margins - yScale(d.maleDeaths))
             .attr('fill', 'steelblue')
             .on('mouseover', (e, d) => {
-                const tooltipText = `${d.stateName}</br>Gun Deaths: ${d.totalDeaths}</br>Population: ${d.population}</br>Male Deaths: ${d.maleDeaths}</br>(Male): ${d.maleDeaths.toFixed(2)} Deaths`;
+                const tooltipText = `${d.stateName}</br>Gun Deaths: ${d.totalDeaths}</br>Male Deaths: ${d.maleDeaths}`;
                 props.ToolTip.moveTTipEvent(tooltip, e);
                 tooltip.html(tooltipText);
             })
@@ -78,7 +78,7 @@ export default function WhiteHatStats(props) {
             .attr('height', (d) => height - margins - yScale(d.femaleDeaths))
             .attr('fill', 'red')
             .on('mouseover', (e, d) => {
-                const tooltipText = `${d.stateName}</br>Gun Deaths: ${d.totalDeaths}</br>Population: ${d.population}</br>Female Deaths: ${d.femaleDeaths}</br>(Female): ${d.femaleDeaths.toFixed(2)} Deaths per 100,000`;
+                const tooltipText = `${d.stateName}</br>Gun Deaths: ${d.totalDeaths}</br>Female Deaths: ${d.femaleDeaths}`;
                 props.ToolTip.moveTTipEvent(tooltip, e);
                 tooltip.html(tooltipText);
             })
