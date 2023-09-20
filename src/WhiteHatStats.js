@@ -3,89 +3,132 @@ import useSVGCanvas from './useSVGCanvas.js';
 import * as d3 from 'd3';
 
 export default function WhiteHatStats(props) {
-  const d3Container = useRef(null);
-  const [svg, height, width, tTip] = useSVGCanvas(d3Container);
+    const chartContainer = useRef(null);
+    const [svg, height, width, tooltip] = useSVGCanvas(chartContainer);
 
-  const margin = 40;
+    const margins = 50;
 
-  useEffect(() => {
-    if (svg === undefined || props.data === undefined) {
-      return;
-    }
+    useEffect(() => {
+        if (svg === undefined || props.data === undefined) {
+            return;
+        }
 
-    // Extract gun death data for each state
-    const data = props.data.states;
+        const genderData = [];
+        
+        for (let i = 0; i < props.data.states.length; i++) {
+            const stateData = props.data.states[i];
+            const totalDeaths = stateData.count;
+            const maleDeaths = stateData.male_count;
+            const femaleDeaths = totalDeaths - stateData.male_count;
+            
+            genderData.push({
+                stateAbbr: stateData.abreviation,
+                stateName: stateData.state,
+                totalDeaths,
+                maleDeaths,
+                femaleDeaths
+            });
+        }
 
-    // Sort the data by gun death count in descending order
-    data.sort((a, b) => b.count - a.count);
+        const xScale = d3
+            .scaleBand()
+            .domain(genderData.map((d) => d.stateAbbr))
+            .range([50, width - 1])
+            .padding(0.2);
 
-    // Create scales for the x and y axes
-    const xScale = d3.scaleBand()
-      .domain(data.map(d => d.state))
-      .range([margin, width - margin])
-      .padding(0.2);
+        const yScale = d3
+            .scaleLinear()
+            .domain([0, d3.max(genderData, (d) => Math.max(d.maleDeaths, d.femaleDeaths))])
+            .nice()
+            .range([height - margins, margins]);
 
-    const yScale = d3.scaleLinear()
-      .domain([0, d3.max(data, d => d.count)])
-      .nice()
-      .range([height - margin, margin]);
+        svg.selectAll('.bar-male').remove();
+        svg.selectAll('.bar-female').remove();
 
-    svg.selectAll('.bar').remove();
-    svg.selectAll('.bar')
-      .data(data)
-      .enter().append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => xScale(d.state))
-      .attr('y', d => yScale(d.count))
-      .attr('width', xScale.bandwidth())
-      .attr('height', d => height - margin - yScale(d.count))
-      .attr('fill', 'steelblue')
-      .on('mouseover', (e, d) => {
-        const string = `${d.state}</br>Gun Deaths: ${d.count}`;
-        props.ToolTip.moveTTipEvent(tTip, e);
-        tTip.html(string);
-      })
-      .on('mousemove', e => {
-        props.ToolTip.moveTTipEvent(tTip, e);
-      })
-      .on('mouseout', () => {
-        props.ToolTip.hideTTip(tTip);
-      });
+        svg.selectAll('.bar-male')
+            .data(genderData)
+            .enter()
+            .append('rect')
+            .attr('class', 'bar-male')
+            .attr('x', (d) => xScale(d.stateAbbr))
+            .attr('y', (d) => yScale(d.maleDeaths))
+            .attr('width', xScale.bandwidth() / 2)
+            .attr('height', (d) => height - margins - yScale(d.maleDeaths))
+            .attr('fill', 'steelblue')
+            .on('mouseover', (e, d) => {
+                const tooltipText = `${d.stateName}</br>Gun Deaths: ${d.totalDeaths}</br>Population: ${d.population}</br>Male Deaths: ${d.maleDeaths}</br>(Male): ${d.maleDeaths.toFixed(2)} Deaths`;
+                props.ToolTip.moveTTipEvent(tooltip, e);
+                tooltip.html(tooltipText);
+            })
+            .on('mousemove', (e) => {
+                props.ToolTip.moveTTipEvent(tooltip, e);
+            })
+            .on('mouseout', () => {
+                props.ToolTip.hideTTip(tooltip);
+            });
 
+        svg.selectAll('.bar-female')
+            .data(genderData)
+            .enter()
+            .append('rect')
+            .attr('class', 'bar-female')
+            .attr('x', (d) => xScale(d.stateAbbr) + xScale.bandwidth() / 2)
+            .attr('y', (d) => yScale(d.femaleDeaths))
+            .attr('width', xScale.bandwidth() / 2)
+            .attr('height', (d) => height - margins - yScale(d.femaleDeaths))
+            .attr('fill', 'red')
+            .on('mouseover', (e, d) => {
+                const tooltipText = `${d.stateName}</br>Gun Deaths: ${d.totalDeaths}</br>Population: ${d.population}</br>Female Deaths: ${d.femaleDeaths}</br>(Female): ${d.femaleDeaths.toFixed(2)} Deaths per 100,000`;
+                props.ToolTip.moveTTipEvent(tooltip, e);
+                tooltip.html(tooltipText);
+            })
+            .on('mousemove', (e) => {
+                props.ToolTip.moveTTipEvent(tooltip, e);
+            })
+            .on('mouseout', () => {
+                props.ToolTip.hideTTip(tooltip);
+            });
 
-    svg.selectAll('.x-axis').remove();
-    svg.append('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0, ${height - margin})`)
-      .call(d3.axisBottom(xScale))
-      .selectAll('text')
-      .style('text-anchor', 'middle')
-      .attr('transform', 'rotate(-45)');
+        svg.selectAll('.x-axis').remove();
+        svg.selectAll('.y-axis').remove();
 
-    svg.selectAll('.y-axis').remove();
-    svg.append('g')
-      .attr('class', 'y-axis')
-      .attr('transform', `translate(${margin}, 0)`)
-      .call(d3.axisLeft(yScale));
+        svg.append('g')
+            .attr('class', 'x-axis')
+            .attr('transform', `translate(0,${height - margins})`)
+            .call(d3.axisBottom(xScale))
+            .selectAll('text')
+            .style('text-anchor', 'middle');
 
-    const labelSize = margin / 2;
-    svg.selectAll('.chart-title').remove();
-    svg.append('text')
-      .attr('class', 'chart-title')
-      .attr('x', width / 2)
-      .attr('y', labelSize)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', labelSize)
-      .attr('font-weight', 'bold')
-      .text('Gun Deaths by State');
+        svg.append('g')
+            .attr('class', 'y-axis')
+            .attr('transform', `translate(${margins},0)`)
+            .call(d3.axisLeft(yScale));
 
-  }, [props.data, svg]);
+        svg.selectAll('.chart-title').remove();
+        svg.append('text')
+            .attr('class', 'chart-title')
+            .attr('x', width / 2)
+            .attr('y', margins / 2)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', 20)
+            .attr('font-weight', 'bold')
+            .text('Gun Deaths by State (Male and Female)');
 
-  return (
-    <div
-      className={"d3-component"}
-      style={{ 'height': '99%', 'width': '99%' }}
-      ref={d3Container}
-    ></div>
-  );
+        svg.append('text')
+            .attr('x', width / 2)
+            .attr('y', height - 10)
+            .attr('text-anchor', 'middle')
+            .text('State');
+
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -height / 2)
+            .attr('y', margins / 2 - 10)
+            .attr('text-anchor', 'middle')
+            .text('Deaths');
+    }, [props.data, svg]);
+
+    return (
+        <div className={"d3-component"} style={{ 'height': '100%', 'width': '100%' }} ref={chartContainer}></div>
+    );
 }
